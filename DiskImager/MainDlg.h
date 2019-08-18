@@ -6,6 +6,7 @@
 #include <atlcrack.h>
 #include <atlctrlx.h>
 #include <vector>
+#include "disk.h"
 
 class CTickCount
 {
@@ -32,7 +33,7 @@ class CMainDlg : public CDialogImpl<CMainDlg>, public CUpdateUI<CMainDlg>,
 public:
 	enum { IDD = IDD_MAINDLG }; 
 
-	CComboBox m_wndDevice; 
+	CComboBoxEx m_wndDevice; 
 	CString m_strImageFile; 
 	CProgressBarCtrl m_wndProgress; 
 	CComboBox m_wndHashType; 
@@ -56,6 +57,7 @@ public:
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
 		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
 		MSG_WM_DEVICECHANGE(OnDeviceChange)
+		MSG_WM_DELETEITEM(OnDeleteItem)
 		COMMAND_ID_HANDLER(IDCANCEL, OnCancel)
 		COMMAND_ID_HANDLER(IDC_ABORT, OnAbortClicked)
 		COMMAND_HANDLER_EX(IDC_BROWSE, BN_CLICKED, OnBrowseClicked)
@@ -65,6 +67,8 @@ public:
 		COMMAND_HANDLER_EX(IDC_WRITE, BN_CLICKED, OnWriteClicked)
 		COMMAND_HANDLER_EX(IDC_VERIFY_ONLY, BN_CLICKED, OnVerifyOnlyClicked)
 		COMMAND_HANDLER_EX(IDC_HASH_TYPE, CBN_SELCHANGE, OnHashTypeSelChange)
+		COMMAND_HANDLER_EX(IDC_IMAGEFILE, EN_KILLFOCUS, OnImageFileKillFocus)
+		COMMAND_HANDLER_EX(IDC_DEVICE, CBN_SELCHANGE, OnDeviceSelChange)
 	END_MSG_MAP()
 
 	BEGIN_DDX_MAP(CMainDlg)
@@ -104,8 +108,12 @@ private:
 	int m_Status;
 	CTickCount m_UpdateTimer, m_ElapsedTimer;
 	CString m_strHomeDir;
+	std::vector<CDiskInfo> m_Disks;
 
 	void GetLogicalDrives();
+	void GetPhysicalDisks();
+	void RefreshPhysicalDisks();
+	void InitDeviceList();
 	void SetReadWriteButtonState();
 	void SaveSettings();
 	void LoadSettings();
@@ -113,7 +121,7 @@ private:
 	void UpdateHashControls();	
 	void GenerateHash(LPCTSTR filename, int hashish);
 	void CopyText(const CString& strText);
-	TCHAR GetCurrentDevice() const;
+	bool IsSameDrive(TCHAR nVolume);
 	CString GetFullFilePath() const;
 	bool IsReatableFile() const;
 	void HandleMessages();
@@ -124,14 +132,25 @@ private:
 	bool HashFile(int hash_type, CString& strHashResult, LPCTSTR lpszFileName);
 	void SetButtonBitmap(UINT nButtonID, UINT nImageID);
 	void UpdateSpeed(double speed);
+	static uint8_t* NewDeviceItemData(uint8_t nDeviceType, LPCTSTR lpszDevicePath);
+	std::vector<CVolume> OpenCurrentVolumes();
+	CAtlFile OpenDevice(DWORD dwDevice, DWORD dwAccess);
+	bool UnmountVolumes(std::vector<CVolume>& volumes);
 
 	int ShowMessage(LPCTSTR message, UINT type) const
 	{
 		return AtlMessageBox(m_hWnd, message, IDR_MAINFRAME, type);
 	}
+	CDiskInfo* FindDiskInfo(DWORD nDeviceNumber);
+	void GetImageFileSize(HANDLE hFile);
+	void GetDeviceSize();
+	void AddDrive(TCHAR nDrive);
 
 public:
 	LRESULT OnHashTypeSelChange(WORD wNotifyCode, WORD wID, HWND hWndCtl);
 	LRESULT OnDeviceChange(UINT uEvent, DWORD dwEventData);
 //	LRESULT OnDevModeChange(LPCTSTR lpszDeviceName);
+	LRESULT OnDeleteItem(UINT ControlID, LPDELETEITEMSTRUCT lpDeleteItem);
+	LRESULT OnImageFileKillFocus(WORD wNotifyCode, WORD wID, HWND hWndCtl);
+	LRESULT OnDeviceSelChange(WORD wNotifyCode, WORD wID, HWND hWndCtl);
 };

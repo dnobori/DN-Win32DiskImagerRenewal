@@ -18,13 +18,18 @@
  **********************************************************************/
 
 #include "stdafx.h"
+#include "resource.h"
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <windows.h>
 #include <winioctl.h>
+#include <Setupapi.h>
+//#include <Ntddstor.h>
+#include <cfgmgr32.h>
 #include "disk.h"
-#include "resource.h"
+
+#pragma comment( lib, "setupapi.lib" )
 
 void ShowErrorMessage(HWND hWnd, LPCTSTR lpszMessage, LPCTSTR lpszTail=NULL)
 {
@@ -43,7 +48,8 @@ void ShowErrorMessage(HWND hWnd, LPCTSTR lpszMessage, LPCTSTR lpszTail=NULL)
 CAtlFile GetHandleOnFile(HWND hWnd, LPCTSTR filelocation, DWORD access)
 {
 	CAtlFile file;
-    if(FAILED(file.Create(filelocation, access, (access == GENERIC_READ) ? FILE_SHARE_READ : 0, (access == GENERIC_READ) ? OPEN_EXISTING:CREATE_ALWAYS)))
+    if(!SUCCEEDED(file.Create(filelocation, access, (access == GENERIC_READ) ? FILE_SHARE_READ : 0, 
+		(access == GENERIC_READ) ? OPEN_EXISTING : CREATE_ALWAYS)))
     {
 		ShowErrorMessage(hWnd, _T("An error occurred when attempting to get a handle on the file."));
     }
@@ -61,24 +67,27 @@ DWORD CVolume::GetDeviceID()
     return sd.Extents[0].DiskNumber;
 }
 
-CAtlFile GetHandleOnDevice(HWND hWnd, int device, DWORD access)
+CAtlFile GetHandleOnDevice(HWND hWnd, DWORD dwDevice, DWORD access)
 {
     CAtlFile DeviceFile;
 	CString strDeviceName;
-	strDeviceName.Format(_T("\\\\.\\PhysicalDrive%d"), device);
-	if(FAILED(DeviceFile.Create(strDeviceName, access, FILE_SHARE_READ | FILE_SHARE_WRITE, OPEN_EXISTING)))
+	if(LOWORD(dwDevice)==DEVICE_DISK)
+		strDeviceName.Format(_T("\\\\.\\PhysicalDrive%d"), HIWORD(dwDevice));
+	else if(LOWORD(dwDevice)==DEVICE_DRIVE)
+		strDeviceName.Format(_T("\\\\.\\%c:"), (TCHAR)HIWORD(dwDevice));
+	if(!SUCCEEDED(DeviceFile.Create(strDeviceName, access, FILE_SHARE_READ | FILE_SHARE_WRITE, OPEN_EXISTING)))
     {
 		ShowErrorMessage(hWnd, _T("An error occurred when attempting to get a handle on the device."));
     }
     return DeviceFile;
 }
 
-bool CVolume::Open(HWND hWnd, char volume, DWORD access)
+bool CVolume::Open(HWND hWnd, TCHAR volume, DWORD access)
 {
     TCHAR szVolumeName[] = _T("\\\\.\\A:");
-	szVolumeName[4] += volume-'A';
+	szVolumeName[4] += volume-_T('A');
 	m_hMsgWnd = hWnd;
-	if(FAILED(m_File.Create(szVolumeName, access, FILE_SHARE_READ | FILE_SHARE_WRITE, OPEN_EXISTING)))
+	if(!SUCCEEDED(m_File.Create(szVolumeName, access, FILE_SHARE_READ | FILE_SHARE_WRITE, OPEN_EXISTING)))
     {
 		ShowErrorMessage(m_hMsgWnd, _T("An error occurred when attempting to get a handle on the volume."));
 		return false;
@@ -164,22 +173,37 @@ bool WriteSectorDataToHandle(HWND hWnd, HANDLE handle, char *data, unsigned long
     return (bResult);
 }
 
-unsigned long long GetNumberOfSectors(HWND hWnd, HANDLE handle, unsigned long long *sectorsize)
+unsigned long long GetDiskSectors(HWND hWnd, HANDLE handle, unsigned long long *pSectorSize)
 {
     DWORD junk;
-    DISK_GEOMETRY_EX diskgeometry;
+    DISK_GEOMETRY_EX DiskGeometry;
     BOOL bResult;
-    bResult = DeviceIoControl(handle, IOCTL_DISK_GET_DRIVE_GEOMETRY_EX, NULL, 0, &diskgeometry, sizeof(diskgeometry), &junk, NULL);
+    bResult = DeviceIoControl(handle, IOCTL_DISK_GET_DRIVE_GEOMETRY_EX, NULL, 0, &DiskGeometry, sizeof(DiskGeometry), &junk, NULL);
     if (!bResult)
     {
 		ShowErrorMessage(hWnd, _T("An error occurred when attempting to get the device's geometry."));
         return 0;
     }
-    if (sectorsize != NULL)
+    if (pSectorSize != NULL)
     {
-        *sectorsize = (unsigned long long)diskgeometry.Geometry.BytesPerSector;
+        *pSectorSize = (unsigned long long)DiskGeometry.Geometry.BytesPerSector;
     }
-    return (unsigned long long)diskgeometry.DiskSize.QuadPart / (unsigned long long)diskgeometry.Geometry.BytesPerSector;
+    return (unsigned long long)DiskGeometry.DiskSize.QuadPart / (unsigned long long)DiskGeometry.Geometry.BytesPerSector;
+}
+
+unsigned long long GetVolumeSectors(HWND hWnd, TCHAR nVolume, unsigned long long *pSectorSize)
+{
+	TCHAR szRootPath[4]=_T("C:\\");
+	szRootPath[0] = nVolume;
+	DWORD dwSectorsPerCluster=0, dwBytesPerSector=0, dwNumberOfFreeClusters=0, dwTotalNumberOfClusters=0;
+	if (!GetDiskFreeSpace(szRootPath, &dwSectorsPerCluster, &dwBytesPerSector, &dwNumberOfFreeClusters, &dwTotalNumberOfClusters))
+	{
+		ShowErrorMessage(hWnd, _T("An error occurred when attempting to get the device's geometry."));
+		return 0;
+	}
+	if (pSectorSize != NULL)
+		*pSectorSize = dwBytesPerSector;
+	return (unsigned long long)dwSectorsPerCluster * dwTotalNumberOfClusters;
 }
 
 unsigned long long GetFileSizeInSectors(HWND hWnd, HANDLE handle, unsigned long long sectorsize)
@@ -199,6 +223,38 @@ unsigned long long GetFileSizeInSectors(HWND hWnd, HANDLE handle, unsigned long 
         }
     }
     return(retVal);
+}
+
+ULARGE_INTEGER GetDeviceSize(HWND hWnd, DWORD dwDevice, HANDLE hDevice)
+{
+	ULARGE_INTEGER llSize = { 0 };
+	if (LOWORD(dwDevice) == DEVICE_DRIVE)
+	{
+		TCHAR szRootPath[4] = _T("C:\\");
+		szRootPath[0] = HIWORD(dwDevice);
+		if (!GetDiskFreeSpaceEx(szRootPath, NULL, &llSize, NULL))
+		{
+			CString strMessage;
+			strMessage.Format(_T("Failed to get the disk space on drive %s."), szRootPath);
+			ShowErrorMessage(hWnd, strMessage);
+		}
+	}
+	else
+	{
+		DISK_GEOMETRY_EX diskGeo;
+		DWORD cbBytesReturned;
+		if (DeviceIoControl(hDevice, IOCTL_DISK_GET_DRIVE_GEOMETRY_EX, NULL, 0, &diskGeo, sizeof(diskGeo), &cbBytesReturned, NULL))
+		{
+			memcpy(&llSize, &diskGeo.DiskSize, sizeof(ULARGE_INTEGER));
+		}
+		else
+		{
+			CString strMessage;
+			strMessage.Format(_T("Failed to get the disk space on hard disk %d."), HIWORD(dwDevice));
+			ShowErrorMessage(hWnd, strMessage);
+		}
+	}
+	return llSize;
 }
 
 bool SpaceAvailable(HWND hWnd, LPCTSTR location, unsigned long long spaceneeded)
@@ -405,4 +461,128 @@ bool CheckDriveType(HWND hWnd, LPCTSTR name, ULONG *pid)
     free(nameNoSlash);
 
     return(retVal);
+}
+
+void ScanDiskDevices(std::vector<CDiskInfo>& disks)
+{
+	HDEVINFO hDiskClassDevices;
+	GUID diskClassDeviceInterfaceGuid = GUID_DEVINTERFACE_DISK;
+	SP_DEVICE_INTERFACE_DATA deviceInterfaceData;
+	PSP_DEVICE_INTERFACE_DETAIL_DATA deviceInterfaceDetailData;
+	DWORD requiredSize;
+	DWORD deviceIndex;
+
+	CHandle disk;
+	STORAGE_DEVICE_NUMBER diskNumber;
+	DWORD bytesReturned;
+
+	//
+	// Get the handle to the device information set for installed
+	// disk class devices. Returns only devices that are currently
+	// present in the system and have an enabled disk device
+	// interface.
+	//
+	hDiskClassDevices = SetupDiGetClassDevs(&diskClassDeviceInterfaceGuid,
+		NULL,
+		NULL,
+		DIGCF_PRESENT |
+		DIGCF_DEVICEINTERFACE);
+	if (INVALID_HANDLE_VALUE == hDiskClassDevices)
+		goto Exit;
+
+	ZeroMemory(&deviceInterfaceData, sizeof(SP_DEVICE_INTERFACE_DATA));
+	deviceInterfaceData.cbSize = sizeof(SP_DEVICE_INTERFACE_DATA);
+	deviceIndex = 0;
+
+	while (SetupDiEnumDeviceInterfaces(hDiskClassDevices,
+		NULL,
+		&diskClassDeviceInterfaceGuid,
+		deviceIndex,
+		&deviceInterfaceData))
+	{
+
+		++deviceIndex;
+
+		SetupDiGetDeviceInterfaceDetail(hDiskClassDevices,
+			&deviceInterfaceData,
+			NULL,
+			0,
+			&requiredSize,
+			NULL);
+		if (ERROR_INSUFFICIENT_BUFFER != GetLastError())
+			goto Exit;
+
+		deviceInterfaceDetailData = (PSP_DEVICE_INTERFACE_DETAIL_DATA)malloc(requiredSize);
+		if (NULL == deviceInterfaceDetailData)
+			goto Exit;
+
+		ZeroMemory(deviceInterfaceDetailData, requiredSize);
+		deviceInterfaceDetailData->cbSize = sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA);
+
+		if (!SetupDiGetDeviceInterfaceDetail(hDiskClassDevices,
+			&deviceInterfaceData,
+			deviceInterfaceDetailData,
+			requiredSize,
+			NULL,
+			NULL))
+			goto Exit;
+
+		disk.Attach(CreateFile(deviceInterfaceDetailData->DevicePath,
+			GENERIC_READ,
+			FILE_SHARE_READ | FILE_SHARE_WRITE,
+			NULL,
+			OPEN_EXISTING,
+			FILE_ATTRIBUTE_NORMAL,
+			NULL));
+		if (INVALID_HANDLE_VALUE == disk)
+			goto Exit;
+
+		SP_DEVINFO_DATA DevInfoData = { sizeof(SP_DEVINFO_DATA) };
+		DWORD dwPropertyRegDataType=0;
+		DWORD dwRemovalPolicy=0;
+		TCHAR szFriendName[128]={0};
+		if (SetupDiEnumDeviceInfo(hDiskClassDevices, deviceIndex-1, &DevInfoData))
+		{
+			if(!SetupDiGetDeviceRegistryProperty(hDiskClassDevices, &DevInfoData, SPDRP_REMOVAL_POLICY,
+				&dwPropertyRegDataType, (LPBYTE)&dwRemovalPolicy, sizeof(DWORD), NULL))
+				goto Exit;
+			if(!SetupDiGetDeviceRegistryProperty(hDiskClassDevices, &DevInfoData, SPDRP_FRIENDLYNAME,
+				&dwPropertyRegDataType, (LPBYTE)szFriendName, sizeof(szFriendName), NULL))
+				goto Exit;
+		}
+
+		printf("PropertyRegDataType %d\n", dwPropertyRegDataType);
+		if (dwRemovalPolicy == CM_REMOVAL_POLICY_EXPECT_NO_REMOVAL)
+		{
+			disk.Close();
+			continue;
+		}
+
+		if (!DeviceIoControl(disk,
+			IOCTL_STORAGE_GET_DEVICE_NUMBER,
+			NULL,
+			0,
+			&diskNumber,
+			sizeof(STORAGE_DEVICE_NUMBER),
+			&bytesReturned,
+			NULL))
+			goto Exit;
+
+		disk.Close();
+
+		CDiskInfo diskInfo;
+		diskInfo.m_strDevicePath = deviceInterfaceDetailData->DevicePath;
+		diskInfo.m_nDeviceType = diskNumber.DeviceType;
+		diskInfo.m_nDeviceNumber = diskNumber.DeviceNumber;
+		diskInfo.m_strFriendlyName=szFriendName;
+		disks.emplace_back(std::move(diskInfo));
+	}
+
+Exit:
+
+	if (INVALID_HANDLE_VALUE != hDiskClassDevices) 
+		SetupDiDestroyDeviceInfoList(hDiskClassDevices);
+
+	if (INVALID_HANDLE_VALUE != disk) 
+		disk.Close();
 }

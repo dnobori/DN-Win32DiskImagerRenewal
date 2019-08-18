@@ -80,33 +80,35 @@ BEGIN
     GROUPBOX        "",IDC_STATIC,7,7,115,88
 END
 
-IDD_MAINDLG DIALOGEX 0, 0, 295, 176
+IDD_MAINDLG DIALOG DISCARDABLE  0, 0, 295, 224
 STYLE DS_FIXEDSYS | WS_MINIMIZEBOX | WS_CAPTION | WS_SYSMENU
 CAPTION "Win32 Disk Imager"
 FONT 8, "MS Shell Dlg"
 BEGIN
-    DEFPUSHBUTTON   "E&xit",IDCANCEL,236,144,50,14
-    PUSHBUTTON      "Cancel",IDC_ABORT,8,144,50,14
-    GROUPBOX        "Image File",IDC_STATIC,7,7,194,34
-    GROUPBOX        "Device",IDC_STATIC,206,7,82,35
-    GROUPBOX        "Hash",IDC_STATIC,7,47,281,48
-    GROUPBOX        "Progress",IDC_STATIC,7,114,282,25
-    CONTROL         "Read Only Allocated Partitions",IDC_PARTITION,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,7,103,114,10
-    PUSHBUTTON      "&Read",IDC_READ,67,144,50,14
-    PUSHBUTTON      "&Write",IDC_WRITE,122,144,50,14
-    COMBOBOX        IDC_DEVICE,219,20,48,57,CBS_DROPDOWNLIST | CBS_SORT | 
-                    WS_VSCROLL | WS_TABSTOP
-    COMBOBOX        IDC_HASH_TYPE,17,61,48,30,CBS_DROPDOWNLIST | WS_VSCROLL | 
-                    WS_TABSTOP
-    PUSHBUTTON      "&Generate",IDC_HASH_GENERATE,69,59,50,14
-    PUSHBUTTON      "&Copy",IDC_HASH_COPY,125,59,50,14
-    CONTROL         "",IDC_PROGRESS,"msctls_progress32",WS_BORDER,14,122,267,
-                    14
-    LTEXT           "",IDC_HASH_LABEL,14,81,267,8
-    PUSHBUTTON      "Browse",IDC_BROWSE,179,19,16,14,BS_BITMAP
+    GROUPBOX        "Image File",IDC_STATIC,7,7,281,34
     EDITTEXT        IDC_IMAGEFILE,14,20,161,12,ES_AUTOHSCROLL
-    PUSHBUTTON      "&Verify Only",IDC_VERIFY_ONLY,179,144,50,14
+    PUSHBUTTON      "Browse",IDC_BROWSE,179,19,16,14,BS_BITMAP
+    LTEXT           "",IDC_FILESIZE,215,22,67,8
+    GROUPBOX        "Device",IDC_STATIC,7,46,281,35
+    CONTROL         "",IDC_DEVICE,"ComboBoxEx32",CBS_DROPDOWNLIST | CBS_SORT | 
+                    WS_VSCROLL | WS_TABSTOP,15,59,174,65
+    LTEXT           "",IDC_DRIVESIZE,215,61,67,8
+    GROUPBOX        "Hash",IDC_STATIC,7,93,281,48
+    COMBOBOX        IDC_HASH_TYPE,17,107,48,30,CBS_DROPDOWNLIST | WS_VSCROLL | 
+                    WS_TABSTOP
+    PUSHBUTTON      "&Generate",IDC_HASH_GENERATE,69,105,50,14
+    PUSHBUTTON      "&Copy",IDC_HASH_COPY,125,105,50,14
+    LTEXT           "",IDC_HASH_LABEL,14,127,261,8
+    CONTROL         "Read Only Allocated Partitions",IDC_PARTITION,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,7,149,114,10
+    GROUPBOX        "Progress",IDC_STATIC,7,160,282,27
+    CONTROL         "",IDC_PROGRESS,"msctls_progress32",WS_BORDER,14,170,271,
+                    14
+    PUSHBUTTON      "Cancel",IDC_ABORT,8,192,50,14
+    PUSHBUTTON      "&Read",IDC_READ,65,192,50,14
+    PUSHBUTTON      "&Write",IDC_WRITE,119,192,50,14
+    PUSHBUTTON      "&Verify Only",IDC_VERIFY_ONLY,173,192,50,14
+    DEFPUSHBUTTON   "E&xit",IDCANCEL,236,192,50,14
 END
 
 
@@ -131,7 +133,7 @@ BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 288
         TOPMARGIN, 7
-        BOTTOMMARGIN, 169
+        BOTTOMMARGIN, 217
     END
 END
 #endif    // APSTUDIO_INVOKED
@@ -168,8 +170,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,0,0,0
- PRODUCTVERSION 1,0,0,0
+ FILEVERSION 1,1,0,0
+ PRODUCTVERSION 1,1,0,0
  FILEFLAGSMASK 0x17L
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -187,14 +189,14 @@ BEGIN
             VALUE "Comments", "Image Writer for Windows to write USB and SD images\0"
             VALUE "CompanyName", "\0"
             VALUE "FileDescription", "DiskImager\0"
-            VALUE "FileVersion", "1.0.0\0"
-            VALUE "InternalName", "DiskImager\0"
-            VALUE "LegalCopyright", "Copyright (C) 2019 ZNONE\0"
+            VALUE "FileVersion", "1.1.0\0"
+            VALUE "InternalName", "win32-image-writer\0"
+            VALUE "LegalCopyright", "Copyright (C) 2009-2017 Windows ImageWriter Team\0"
             VALUE "LegalTrademarks", "\0"
             VALUE "OriginalFilename", "Win32DiskImager\0"
             VALUE "PrivateBuild", "\0"
             VALUE "ProductName", "Win32 Image Writer\0"
-            VALUE "ProductVersion", "1.0.0\0"
+            VALUE "ProductVersion", "1.1.0\0"
             VALUE "SpecialBuild", "\0"
         END
     END

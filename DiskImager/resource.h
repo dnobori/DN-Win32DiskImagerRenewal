@@ -21,6 +21,9 @@
 #define IDC_PROGRESS                    1010
 #define IDC_HASH_LABEL                  1013
 #define IDC_ABORT                       1014
+#define IDC_COMBOBOXEX1                 1015
+#define IDC_FILESIZE                    1016
+#define IDC_DRIVESIZE                   1017
 #define IDS_IMAGE_LARGER_THEN_DISK      57346
 #define ID_ELAPSED_TIME                 57347
 
@@ -30,7 +33,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        204
 #define _APS_NEXT_COMMAND_VALUE         32775
-#define _APS_NEXT_CONTROL_VALUE         1015
+#define _APS_NEXT_CONTROL_VALUE         1018
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

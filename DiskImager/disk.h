@@ -46,12 +46,14 @@ public:
 		if (m_bLocked)
 			Unlock();
 	}
-	bool Open(HWND hWnd, char volume, DWORD access);
+	bool Open(HWND hWnd, TCHAR volume, DWORD access);
 	bool Lock();
 	bool Unlock();
 	DWORD GetDeviceID();
 	bool Unmount();
 	bool IsUnmounted();
+
+	HANDLE GetHandle() const { return m_File;  }
 
 private:
 	CAtlFile m_File;
@@ -59,17 +61,34 @@ private:
 	bool m_bLocked;
 };
 
+struct CDiskInfo
+{
+	CString m_strDevicePath;
+	CString m_strFriendlyName;
+	UINT m_nDeviceType;
+	UINT m_nDeviceNumber;
+	std::vector<TCHAR> m_Volumes;
+};
+
+#define DEVICE_DISK		0
+#define DEVICE_DRIVE	1
+
 // IOCTL control code
 #define IOCTL_STORAGE_QUERY_PROPERTY   CTL_CODE(IOCTL_STORAGE_BASE, 0x0500, METHOD_BUFFERED, FILE_ANY_ACCESS)
 
 CAtlFile GetHandleOnFile(HWND hWnd, LPCTSTR filelocation, DWORD access);
-CAtlFile GetHandleOnDevice(HWND hWnd, int device, DWORD access);
+CAtlFile GetHandleOnDevice(HWND hWnd, DWORD dwDevice, DWORD access);
 CString getDriveLabel(LPCTSTR drv);
+ULARGE_INTEGER GetDeviceSize(HWND hWnd, DWORD dwDevice, HANDLE hDevice);
 void ReadSectorDataFromHandle(HWND hWnd, HANDLE handle, unsigned long long startsector, unsigned long long numsectors, unsigned long long sectorsize, std::vector<char>& SectorData);
 bool WriteSectorDataToHandle(HWND hWnd, HANDLE handle, char *data, unsigned long long startsector, unsigned long long numsectors, unsigned long long sectorsize);
-unsigned long long GetNumberOfSectors(HWND hWnd, HANDLE handle, unsigned long long *sectorsize);
+unsigned long long GetDiskSectors(HWND hWnd, HANDLE handle, unsigned long long *pSectorSize);
+unsigned long long GetVolumeSectors(HWND hWnd, TCHAR nVolume, unsigned long long *pSectorSize);
 unsigned long long GetFileSizeInSectors(HWND hWnd, HANDLE handle, unsigned long long sectorsize);
 bool SpaceAvailable(HWND hWnd, LPCTSTR location, unsigned long long spaceneeded);
+
 bool CheckDriveType(HWND hWnd, LPCTSTR name, ULONG *pid);
+
+void ScanDiskDevices(std::vector<CDiskInfo>& disks);
 
 #endif // DISK_H

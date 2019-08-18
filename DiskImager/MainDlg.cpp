@@ -11,6 +11,8 @@
 #include <objidl.h>
 #include <atlfile.h>
 #include <atlimage.h>
+#include <tuple>
+#include <algorithm>
 #include "MainDlg.h"
 #include "disk.h"
 
@@ -91,7 +93,11 @@ LRESULT CMainDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 
 	DoDataExchange(FALSE);
 
+	m_wndDevice.ResetContent();
+	GetPhysicalDisks();
 	GetLogicalDrives();
+	InitDeviceList();
+
 	m_Status = STATUS_IDLE;
 	m_wndProgress.SetPos(0);
 	m_wndStatusBar.SetPaneText(ID_DEFAULT_PANE, _T("Waiting for a task."));
@@ -186,14 +192,14 @@ LRESULT CMainDlg::OnBrowseClicked(WORD wNotifyCode, WORD wID, HWND hWndCtl)
 	// create a generic FileDialog
 	CFileDialog dialog(TRUE, NULL, NULL, OFN_HIDEREADONLY | OFN_EXPLORER | OFN_DONTADDTORECENT, szFileType);
 	dialog.m_ofn.lpstrTitle = _T("Select a disk image");
-	if (PathFileExists(m_strImageFile))
+	//if (PathFileExists(m_strImageFile))
 	{
 		_tcscpy(dialog.m_szFileName, m_strImageFile);
 	}
-	else
-	{
-		_tcscpy(dialog.m_szFileName, m_strHomeDir);
-	}
+	//else
+	//{
+	//	_tcscpy(dialog.m_szFileName, m_strHomeDir);
+	//}
 
 	if (dialog.DoModal(m_hWnd)==IDOK)
 	{
@@ -203,6 +209,14 @@ LRESULT CMainDlg::OnBrowseClicked(WORD wNotifyCode, WORD wID, HWND hWndCtl)
 		DoDataExchange(FALSE, IDC_IMAGEFILE);
 		PathRemoveFileSpec(dialog.m_szFileName);
 		m_strHomeDir = dialog.m_szFileName;
+
+		CAtlFile file;
+		SetDlgItemText(IDC_FILESIZE, NULL);
+		if (SUCCEEDED(file.Create(m_strImageFile, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, OPEN_EXISTING)))
+		{
+			GetImageFileSize(file);
+		}
+
 		SetReadWriteButtonState();
 		UpdateHashControls();
 	}
@@ -256,7 +270,7 @@ LRESULT CMainDlg::OnReadClicked(WORD wNotifyCode, WORD wID, HWND hWndCtl)
 	{
 		strFullPath = GetFullFilePath();
 		// check whether source and target device is the same...
-		if (strFullPath[0] == GetCurrentDevice())
+		if (IsSameDrive(strFullPath[0]))
 		{
 			ShowMessage(_T("Image file cannot be located on the target device."),
 				MB_OK | MB_ICONERROR);
@@ -279,65 +293,67 @@ LRESULT CMainDlg::OnReadClicked(WORD wNotifyCode, WORD wID, HWND hWndCtl)
 		m_Status = STATUS_READING;
 		double mbpersec;
 		std::vector<char> SectorData;
+		DWORD dwDevice = m_wndDevice.GetItemData(m_wndDevice.GetCurSel());
+		WORD DeviceType=LOWORD(dwDevice);
 		unsigned long long i, lasti, nSectors, filesize, spaceneeded = 0ull;
-		TCHAR volumeID = GetCurrentDevice();
-		if (!Volume.Open(m_hWnd, volumeID, GENERIC_READ))
+		std::vector<CVolume> volumes = OpenCurrentVolumes();
+		HANDLE hDevice = INVALID_HANDLE_VALUE;
+
+		File = GetHandleOnFile(m_hWnd, strFullPath, GENERIC_WRITE);
+		if (File == INVALID_HANDLE_VALUE)
 		{
 			m_Status = STATUS_IDLE;
 			UIEnable(IDCANCEL, FALSE);
 			SetReadWriteButtonState();
 			return 0;
 		}
-		DWORD deviceID = Volume.GetDeviceID();
-		if (!Volume.Lock())
+
+		if (DeviceType == DEVICE_DISK)
 		{
-			m_Status = STATUS_IDLE;
-			UIEnable(IDCANCEL, FALSE);
-			SetReadWriteButtonState();
-			return 0;
-		}
-		if (!Volume.Unmount())
-		{
-			Volume.Unlock();
-			m_Status = STATUS_IDLE;
-			UIEnable(IDCANCEL, FALSE);
-			SetReadWriteButtonState();
-			return 0;
-		}
-		File=GetHandleOnFile(m_hWnd, strFullPath, GENERIC_WRITE);
-		if (File == NULL)
-		{
-			m_Status = STATUS_IDLE;
-			UIEnable(IDCANCEL, FALSE);
-			SetReadWriteButtonState();
-			return 0;
-		}
-		RawDisk=GetHandleOnDevice(m_hWnd, deviceID, GENERIC_READ);
-		if (RawDisk == NULL)
-		{
-			m_Status = STATUS_IDLE;
-			UIEnable(IDCANCEL, FALSE);
-			SetReadWriteButtonState();
-			return 0;
-		}
-		nSectors = GetNumberOfSectors(m_hWnd, RawDisk, &m_SectorSize);
-		if (m_bPartition)
-		{
-			// Read MBR partition table
-			ReadSectorDataFromHandle(m_hWnd, RawDisk, 0, 1ul, 512ul, SectorData);
-			nSectors = 1ul;
-			// Read partition information
-			for (i = 0ul; i < 4ul; i++)
+			if (!UnmountVolumes(volumes))
+				return 0;
+			RawDisk.Attach(OpenDevice(dwDevice, GENERIC_READ).Detach());
+			if (RawDisk == INVALID_HANDLE_VALUE)
 			{
-				uint32_t partitionStartSector = *((uint32_t*)(SectorData.data() + 0x1BE + 8 + 16 * i));
-				uint32_t partitionNumSectors = *((uint32_t*)(SectorData.data() + 0x1BE + 12 + 16 * i));
-				// Set numsectors to end of last partition
-				if (partitionStartSector + partitionNumSectors > nSectors)
+				m_Status = STATUS_IDLE;
+				UIEnable(IDCANCEL, FALSE);
+				SetReadWriteButtonState();
+				return 0;
+			}
+
+			nSectors = GetDiskSectors(m_hWnd, RawDisk, &m_SectorSize);
+			if (m_bPartition)
+			{
+				// Read MBR partition table
+				ReadSectorDataFromHandle(m_hWnd, RawDisk, 0, 1ul, 512ul, SectorData);
+				nSectors = 1ul;
+				// Read partition information
+				for (i = 0ul; i < 4ul; i++)
 				{
-					nSectors = partitionStartSector + partitionNumSectors;
+					uint32_t partitionStartSector = *((uint32_t*)(SectorData.data() + 0x1BE + 8 + 16 * i));
+					uint32_t partitionNumSectors = *((uint32_t*)(SectorData.data() + 0x1BE + 12 + 16 * i));
+					// Set numsectors to end of last partition
+					if (partitionStartSector + partitionNumSectors > nSectors)
+					{
+						nSectors = partitionStartSector + partitionNumSectors;
+					}
 				}
 			}
+			hDevice = RawDisk;
 		}
+		else
+		{
+			nSectors = GetVolumeSectors(m_hWnd, HIWORD(dwDevice), &m_SectorSize);
+			if (!volumes[0].Lock())
+			{
+				m_Status = STATUS_IDLE;
+				UIEnable(IDCANCEL, FALSE);
+				SetReadWriteButtonState();
+				return false;
+			}
+			hDevice = volumes[0].GetHandle();
+		}
+
 		filesize = GetFileSizeInSectors(m_hWnd, File, m_SectorSize);
 		if (filesize >= nSectors)
 		{
@@ -369,10 +385,10 @@ LRESULT CMainDlg::OnReadClicked(WORD wNotifyCode, WORD wID, HWND hWndCtl)
 		}
 		lasti = 0ul;
 		m_UpdateTimer.start();
-		m_ElapsedTimer.start();
+		StartTimer();
 		for (i = 0ul; i < nSectors && m_Status == STATUS_READING; i += 1024ul)
 		{
-			ReadSectorDataFromHandle(m_hWnd, RawDisk, i, (nSectors - i >= 1024ul) ? 1024ul : (nSectors - i), m_SectorSize, SectorData);
+			ReadSectorDataFromHandle(m_hWnd, hDevice, i, (nSectors - i >= 1024ul) ? 1024ul : (nSectors - i), m_SectorSize, SectorData);
 			if (SectorData.empty())
 			{
 				m_Status = STATUS_IDLE;
@@ -437,7 +453,7 @@ LRESULT CMainDlg::OnWriteClicked(WORD wNotifyCode, WORD wID, HWND hWndCtl)
 	{
 		if (IsReatableFile())
 		{
-			if (m_strImageFile[0] == GetCurrentDevice())
+			if (IsSameDrive(m_strImageFile[0]))
 			{
 				ShowMessage(_T("Image file cannot be located on the target device."),
 					MB_OK | MB_ICONERROR);
@@ -462,31 +478,12 @@ LRESULT CMainDlg::OnWriteClicked(WORD wNotifyCode, WORD wID, HWND hWndCtl)
 			UIEnable(IDC_VERIFY_ONLY, FALSE);
 			double mbpersec;
 			std::vector<char> SectorData;
+			DWORD dwDevice = m_wndDevice.GetItemData(m_wndDevice.GetCurSel());
+			WORD DeviceType=LOWORD(dwDevice);
 			unsigned long long i, lasti, nAvailableSectors, nSectors;
-			TCHAR volumeID = GetCurrentDevice();
-			// int deviceID = cboxDevice->itemData(cboxDevice->currentIndex()).toInt();
-			if (!Volume.Open(m_hWnd, volumeID, GENERIC_WRITE))
-			{
-				m_Status = STATUS_IDLE;
-				UIEnable(IDCANCEL, FALSE);
-				SetReadWriteButtonState();
-				return 0;
-			}
-			DWORD deviceID = Volume.GetDeviceID();
-			if (!Volume.Lock())
-			{
-				m_Status = STATUS_IDLE;
-				UIEnable(IDCANCEL, FALSE);
-				SetReadWriteButtonState();
-				return 0;
-			}
-			if (!Volume.Unmount())
-			{
-				m_Status = STATUS_IDLE;
-				UIEnable(IDCANCEL, FALSE);
-				SetReadWriteButtonState();
-				return 0;
-			}
+			std::vector<CVolume> volumes = OpenCurrentVolumes();
+			HANDLE hDevice = INVALID_HANDLE_VALUE;
+
 			File=GetHandleOnFile(m_hWnd, m_strImageFile, GENERIC_READ);
 			if (File == NULL)
 			{
@@ -495,24 +492,46 @@ LRESULT CMainDlg::OnWriteClicked(WORD wNotifyCode, WORD wID, HWND hWndCtl)
 				SetReadWriteButtonState();
 				return 0;
 			}
-			RawDisk=GetHandleOnDevice(m_hWnd, deviceID, GENERIC_WRITE);
-			if (RawDisk == NULL)
+			
+			if (DeviceType == DEVICE_DISK)
 			{
-				m_Status = STATUS_IDLE;
-				UIEnable(IDCANCEL, FALSE);
-				SetReadWriteButtonState();
-				return 0;
-			}
-			nAvailableSectors = GetNumberOfSectors(m_hWnd, RawDisk, &m_SectorSize);
-			if (!nAvailableSectors)
-			{
-				//For external card readers you may not get device change notification when you remove the card/flash.
-				//(So no WM_DEVICECHANGE signal). Device stays but size goes to 0. [Is there special event for this on Windows??]
-				passfail = false;
-				m_Status = STATUS_IDLE;
-				return 0;
+				if (!UnmountVolumes(volumes))
+					return 0;
 
+				RawDisk.Attach(OpenDevice(dwDevice, GENERIC_WRITE).Detach());
+				if (RawDisk == INVALID_HANDLE_VALUE)
+				{
+					m_Status = STATUS_IDLE;
+					UIEnable(IDCANCEL, FALSE);
+					SetReadWriteButtonState();
+					return 0;
+				}
+				nAvailableSectors = GetDiskSectors(m_hWnd, RawDisk, &m_SectorSize);
+				if (LOWORD(dwDevice) == DEVICE_DRIVE)
+					nAvailableSectors = GetVolumeSectors(m_hWnd, HIWORD(dwDevice), &m_SectorSize);
+				if (!nAvailableSectors)
+				{
+					//For external card readers you may not get device change notification when you remove the card/flash.
+					//(So no WM_DEVICECHANGE signal). Device stays but size goes to 0. [Is there special event for this on Windows??]
+					passfail = false;
+					m_Status = STATUS_IDLE;
+					return 0;
+				}
+				hDevice = RawDisk;
 			}
+			else
+			{
+				nSectors = GetVolumeSectors(m_hWnd, HIWORD(dwDevice), &m_SectorSize);
+				if (!volumes[0].Lock())
+				{
+					m_Status = STATUS_IDLE;
+					UIEnable(IDCANCEL, FALSE);
+					SetReadWriteButtonState();
+					return false;
+				}
+				hDevice = volumes[0].GetHandle();
+			}
+
 			nSectors = GetFileSizeInSectors(m_hWnd, File, m_SectorSize);
 			if (!nSectors)
 			{
@@ -589,7 +608,7 @@ LRESULT CMainDlg::OnWriteClicked(WORD wNotifyCode, WORD wID, HWND hWndCtl)
 					SetReadWriteButtonState();
 					return 0;
 				}
-				if (!WriteSectorDataToHandle(m_hWnd, RawDisk, SectorData.data(), i, (nSectors - i >= 1024ul) ? 1024ul : (nSectors - i), m_SectorSize))
+				if (!WriteSectorDataToHandle(m_hWnd, hDevice, SectorData.data(), i, (nSectors - i >= 1024ul) ? 1024ul : (nSectors - i), m_SectorSize))
 				{
 					SectorData.clear();
 					m_Status = STATUS_IDLE;
@@ -646,13 +665,12 @@ LRESULT CMainDlg::OnVerifyOnlyClicked(WORD wNotifyCode, WORD wID, HWND hWndCtl)
 	bool passfail = true;
 	DoDataExchange(TRUE, IDC_IMAGEFILE);
 	std::vector<char> DiskData; //for verify
-	CVolume Volume;
 	CAtlFile File, RawDisk;
 	if (!m_strImageFile.IsEmpty())
 	{
 		if (IsReatableFile())
 		{
-			if (m_strImageFile[0] == GetCurrentDevice())
+			if (IsSameDrive(m_strImageFile[0]))
 			{
 				ShowMessage(_T("Image file cannot be located on the target device."),
 					MB_OK | MB_ICONERROR);
@@ -665,30 +683,12 @@ LRESULT CMainDlg::OnVerifyOnlyClicked(WORD wNotifyCode, WORD wID, HWND hWndCtl)
 			UIEnable(IDC_VERIFY_ONLY, FALSE);
 			double mbpersec;
 			std::vector<char> SectorData;
+			DWORD dwDevice = m_wndDevice.GetItemData(m_wndDevice.GetCurSel());
+			WORD DeviceType=LOWORD(dwDevice);
 			unsigned long long i, lasti, nAvailableSectors, nSectors, result;
-			TCHAR volumeID = GetCurrentDevice();
-			if (!Volume.Open(m_hWnd, volumeID, GENERIC_READ))
-			{
-				m_Status = STATUS_IDLE;
-				UIEnable(IDCANCEL, FALSE);
-				SetReadWriteButtonState();
-				return 0;
-			}
-			DWORD deviceID = Volume.GetDeviceID();
-			if (!Volume.Lock())
-			{
-				m_Status = STATUS_IDLE;
-				UIEnable(IDCANCEL, FALSE);
-				SetReadWriteButtonState();
-				return 0;
-			}
-			if (!Volume.Unmount())
-			{
-				m_Status = STATUS_IDLE;
-				UIEnable(IDCANCEL, FALSE);
-				SetReadWriteButtonState();
-				return 0;
-			}
+			std::vector<CVolume> volumes = OpenCurrentVolumes();
+			HANDLE hDevice = INVALID_HANDLE_VALUE;
+
 			File=GetHandleOnFile(m_hWnd, m_strImageFile, GENERIC_READ);
 			if (File == INVALID_HANDLE_VALUE)
 			{
@@ -697,24 +697,43 @@ LRESULT CMainDlg::OnVerifyOnlyClicked(WORD wNotifyCode, WORD wID, HWND hWndCtl)
 				SetReadWriteButtonState();
 				return 0;
 			}
-			RawDisk=GetHandleOnDevice(m_hWnd, deviceID, GENERIC_READ);
-			if (RawDisk == INVALID_HANDLE_VALUE)
-			{
-				m_Status = STATUS_IDLE;
-				UIEnable(IDCANCEL, FALSE);
-				SetReadWriteButtonState();
-				return 0;
-			}
-			nAvailableSectors = GetNumberOfSectors(m_hWnd, RawDisk, &m_SectorSize);
-			if (!nAvailableSectors)
-			{
-				//For external card readers you may not get device change notification when you remove the card/flash.
-				//(So no WM_DEVICECHANGE signal). Device stays but size goes to 0. [Is there special event for this on Windows??]
-				passfail = false;
-				m_Status = STATUS_IDLE;
-				return 0;
 
+			if (DeviceType == DEVICE_DISK)
+			{
+				if (!UnmountVolumes(volumes))
+					return 0;
+				RawDisk.Attach(OpenDevice(dwDevice, GENERIC_READ).Detach());
+				if (RawDisk == INVALID_HANDLE_VALUE)
+				{
+					m_Status = STATUS_IDLE;
+					UIEnable(IDCANCEL, FALSE);
+					SetReadWriteButtonState();
+					return 0;
+				}
+				nAvailableSectors = GetDiskSectors(m_hWnd, RawDisk, &m_SectorSize);
+				if (!nAvailableSectors)
+				{
+					//For external card readers you may not get device change notification when you remove the card/flash.
+					//(So no WM_DEVICECHANGE signal). Device stays but size goes to 0. [Is there special event for this on Windows??]
+					passfail = false;
+					m_Status = STATUS_IDLE;
+					return 0;
+				}
+				hDevice = RawDisk;
 			}
+			else
+			{
+				nAvailableSectors = GetVolumeSectors(m_hWnd, HIWORD(dwDevice), &m_SectorSize);
+				if (!volumes[0].Lock())
+				{
+					m_Status = STATUS_IDLE;
+					UIEnable(IDCANCEL, FALSE);
+					SetReadWriteButtonState();
+					return false;
+				}
+				hDevice = volumes[0].GetHandle();
+			}
+
 			nSectors = GetFileSizeInSectors(m_hWnd, File, m_SectorSize);
 			if (!nSectors)
 			{
@@ -773,7 +792,7 @@ LRESULT CMainDlg::OnVerifyOnlyClicked(WORD wNotifyCode, WORD wID, HWND hWndCtl)
 			}
 			m_wndProgress.SetRange32(0, (nSectors == 0ul) ? 100 : (int)nSectors);
 			m_UpdateTimer.start();
-			m_ElapsedTimer.start();
+			StartTimer();
 			lasti = 0ul;
 			for (i = 0ul; i < nSectors && m_Status == STATUS_VERIFYING; i += 1024ul)
 			{
@@ -785,7 +804,7 @@ LRESULT CMainDlg::OnVerifyOnlyClicked(WORD wNotifyCode, WORD wID, HWND hWndCtl)
 					SetReadWriteButtonState();
 					return 0;
 				}
-				ReadSectorDataFromHandle(m_hWnd, RawDisk, i, (nSectors - i >= 1024ul) ? 1024ul : (nSectors - i), m_SectorSize, DiskData);
+				ReadSectorDataFromHandle(m_hWnd, hDevice, i, (nSectors - i >= 1024ul) ? 1024ul : (nSectors - i), m_SectorSize, DiskData);
 				if (DiskData.empty())
 				{
 					CString strMessage; 
@@ -862,41 +881,121 @@ void CMainDlg::GetLogicalDrives()
 	int i = 0;
 	ULONG pID;
 
-	m_wndDevice.ResetContent();
-
 	while (driveMask != 0)
 	{
 		if (driveMask & 1)
 		{
 			// the "A" in drivename will get incremented by the # of bits
 			// we've shifted
-			TCHAR drivename[] = _T("\\\\.\\A:\\");
-			drivename[4] += i;
-			if (CheckDriveType(m_hWnd, drivename, &pID))
+			TCHAR lpszDriveName[8] = _T("\\\\.\\A:\\") ;
+			lpszDriveName[4] += i;
+			if (CheckDriveType(m_hWnd, lpszDriveName, &pID))
 			{
-				CString strDevice;
-				strDevice.Format(_T("[%c:\\]"), drivename[4]);
-				int nIndex = m_wndDevice.AddString(strDevice);
-				m_wndDevice.SetItemData(nIndex, (DWORD_PTR)pID);
+				CVolume volume;
+				TCHAR szDeviceLabel[8] = _T("[A:\\]");
+				szDeviceLabel[1] = lpszDriveName[4];
+				if (volume.Open(m_hWnd, lpszDriveName[4], GENERIC_READ))
+				{
+					DWORD nDeviceNumber = volume.GetDeviceID();
+					CDiskInfo* pDiskInfo = FindDiskInfo(nDeviceNumber);
+					if (pDiskInfo)
+						pDiskInfo->m_Volumes.push_back(lpszDriveName[4]);
+				}
+				//int nIndex = m_wndDevice.AddString(szDeviceLabel);
+				//m_wndDevice.SetItemData(nIndex, (DWORD_PTR)MAKELONG(DEVICE_DRIVE, lpszDriveName[4]));
 			}
 		}
 		driveMask >>= 1;
-		m_wndDevice.SetCurSel(0);
 		++i;
 	}
 }
 
+CDiskInfo* CMainDlg::FindDiskInfo(DWORD nDeviceNumber)
+{
+	for (CDiskInfo& disk : m_Disks)
+	{
+		if (disk.m_nDeviceNumber == nDeviceNumber)
+			return &disk;
+	}
+	return NULL;
+}
+
+void CMainDlg::GetPhysicalDisks()
+{
+	m_Disks.clear();
+	ScanDiskDevices(m_Disks);
+}
+
+void CMainDlg::RefreshPhysicalDisks()
+{
+	std::vector<CDiskInfo> temp;
+	ScanDiskDevices(temp);
+	for(std::vector<CDiskInfo>::iterator it=m_Disks.begin(); it!=m_Disks.end(); )
+	{
+		bool found=false;
+		for(size_t j=0; j!=temp.size(); j++)
+			if(temp[j].m_nDeviceNumber==it->m_nDeviceNumber)
+			{
+				found=true;
+				break;
+			}
+		if(found) ++it;
+		else it = m_Disks.erase(it);
+	}
+	for(size_t i=0; i!=temp.size(); i++)
+	{
+		bool found=false;
+		for(size_t j=0; j!=m_Disks.size(); j++)
+			if(m_Disks[j].m_nDeviceNumber==temp[i].m_nDeviceNumber)
+			{
+				found=true;
+				break;
+			}
+		if(!found)
+			m_Disks.push_back(temp[i]);
+	}
+	InitDeviceList();
+}
+
+void CMainDlg::InitDeviceList()
+{
+	m_wndDevice.ResetContent();
+	for (const CDiskInfo& disk : m_Disks)
+	{
+		//LPTSTR lpszPath = new TCHAR[32];
+		//lpszPath[0] == DEVICE_DISK;
+		//wsprintf(lpszPath+1, _T("\\\\?\\PhysicalDrive%d"), disk.m_nDeviceNumber);
+		//int nIndex = m_wndDevice.AddString(disk.m_strFriendlyName);
+		//m_wndDevice.SetItemData(nIndex, (DWORD_PTR)MAKELONG(DEVICE_DISK, disk.m_nDeviceNumber));
+		m_wndDevice.AddItem(disk.m_strFriendlyName, 0, 0, 0, MAKELPARAM(DEVICE_DISK, disk.m_nDeviceNumber));
+		TCHAR szDeviceLabel[8] = _T("[A:\\]");
+		for (TCHAR nVolume : disk.m_Volumes)
+		{
+			szDeviceLabel[1] = nVolume;
+			m_wndDevice.AddItem(szDeviceLabel, 0, 0, 1, MAKELPARAM(DEVICE_DRIVE, nVolume));
+		}
+	}
+
+	if (m_wndDevice.GetCount() > 0)
+	{
+		m_wndDevice.SetCurSel(0);
+		GetDeviceSize();
+	}
+}
 
 void CMainDlg::SetReadWriteButtonState()
 {
-	bool fileSelected = !m_strImageFile.IsEmpty();
-	bool deviceSelected = (m_wndDevice.GetCount() > 0);
+	bool bFileSelected = !m_strImageFile.IsEmpty();
+	bool bDeviceSelected = (m_wndDevice.GetCount() > 0);
 	DWORD dwAttributes = GetFileAttributes(m_strImageFile);
+	BOOL bIsReadOnly = TRUE;
+	if(dwAttributes!=INVALID_FILE_ATTRIBUTES)
+		bIsReadOnly=dwAttributes&FILE_ATTRIBUTE_READONLY;
 
 	// set read and write buttons according to m_Status of file/device
-	UIEnable(IDC_READ, deviceSelected && fileSelected && (PathFileExists(m_strImageFile) ? !(dwAttributes&FILE_ATTRIBUTE_READONLY) : true));
-	UIEnable(IDC_WRITE, deviceSelected && fileSelected );
-	UIEnable(IDC_VERIFY_ONLY, deviceSelected && fileSelected );
+	UIEnable(IDC_READ, bDeviceSelected && bFileSelected);
+	UIEnable(IDC_WRITE, bDeviceSelected && bFileSelected && !bIsReadOnly );
+	UIEnable(IDC_VERIFY_ONLY, bDeviceSelected && bFileSelected && (dwAttributes!=INVALID_FILE_ATTRIBUTES) );
 }
 
 void CMainDlg::SaveSettings()
@@ -948,7 +1047,13 @@ void CMainDlg::InitializeHomeDir()
 
 void CMainDlg::UpdateHashControls()
 {
+	UIEnable(IDC_HASH_COPY, FALSE);
+	UIEnable(IDC_HASH_GENERATE, FALSE);
+	UIEnable(IDC_HASH_COPY, FALSE);
+
 	DWORD dwAttributes = GetFileAttributes(m_strImageFile);
+	if(dwAttributes==INVALID_FILE_ATTRIBUTES)
+		return;
 
 	CAtlFile file;
 	if (file.Create(m_strImageFile, GENERIC_READ, FILE_SHARE_READ, OPEN_EXISTING) != ERROR_SUCCESS)
@@ -959,7 +1064,6 @@ void CMainDlg::UpdateHashControls()
 	bool validFile = (PathFileExists(m_strImageFile) && !(dwAttributes&FILE_ATTRIBUTE_DIRECTORY) &&
 		llFileSize>0);
 
-	UIEnable(IDC_HASH_COPY, FALSE);
 	SetDlgItemText(IDC_HASH_LABEL, NULL);
 
 	if (m_wndHashType.GetCurSel() != 0 && !m_strImageFile.IsEmpty() && validFile)
@@ -1006,30 +1110,19 @@ LRESULT CMainDlg::OnDeviceChange(UINT uEvent, DWORD dwEventData)
 	PDEV_BROADCAST_HDR lpdb = (PDEV_BROADCAST_HDR)dwEventData;
 	switch (uEvent)
 	{
+	case DBT_DEVNODES_CHANGED:
+		RefreshPhysicalDisks();
+		break;
 	case DBT_DEVICEARRIVAL:
 		if (lpdb->dbch_devicetype == DBT_DEVTYP_VOLUME)
 		{
 			PDEV_BROADCAST_VOLUME lpdbv = (PDEV_BROADCAST_VOLUME)lpdb;
 			if (DBTF_NET)
 			{
-				char ALET = FirstDriveFromMask(lpdbv->dbcv_unitmask);
+				char nDrive = FirstDriveFromMask(lpdbv->dbcv_unitmask);
 				// add device to combo box (after sanity check that
 				// it's not already there, which it shouldn't be)
-				CString qs;
-				qs.Format(_T("[%c:\\]"), ALET);
-				if (m_wndDevice.FindString(-1, qs) == -1)
-				{
-					ULONG pID;
-					TCHAR longname[] = _T("\\\\.\\A:\\");
-					longname[4] = ALET;
-					// checkDriveType gets the physicalID
-					if (CheckDriveType(m_hWnd, longname, &pID))
-					{
-						int index = m_wndDevice.AddString(qs);
-						m_wndDevice.SetItemData(index, (DWORD_PTR)pID);
-						SetReadWriteButtonState();
-					}
-				}
+				AddDrive(nDrive);
 			}
 		}
 		break;
@@ -1039,14 +1132,21 @@ LRESULT CMainDlg::OnDeviceChange(UINT uEvent, DWORD dwEventData)
 			PDEV_BROADCAST_VOLUME lpdbv = (PDEV_BROADCAST_VOLUME)lpdb;
 			if (DBTF_NET)
 			{
-				char ALET = FirstDriveFromMask(lpdbv->dbcv_unitmask);
+				char nDrive = FirstDriveFromMask(lpdbv->dbcv_unitmask);
 				//  find the device that was removed in the combo box,
 				//  and remove it from there....
 				//  "removeItem" ignores the request if the index is
 				//  out of range, and findText returns -1 if the item isn't found.
-				CString qs;
-				qs.Format(_T("[%c:\\]"), ALET);
-				m_wndDevice.DeleteString(m_wndDevice.FindString(-1, qs));
+				TCHAR szLabel[]=_T("[%c:\\]");
+				szLabel[1]=nDrive;
+				for(size_t i=0; i!=m_Disks.size(); i++)
+				{
+					CDiskInfo& DiskInfo =m_Disks[i];
+					std::vector<TCHAR>::iterator it=std::find(DiskInfo.m_Volumes.begin(), DiskInfo.m_Volumes.end(), nDrive);
+					if(it!=DiskInfo.m_Volumes.end())
+						DiskInfo.m_Volumes.erase(it);
+				}
+				m_wndDevice.DeleteString(m_wndDevice.FindStringExact(-1, szLabel));
 				SetReadWriteButtonState();
 			}
 		}
@@ -1083,16 +1183,24 @@ void CMainDlg::GenerateHash(LPCTSTR filename, int hashish)
 	SetCursor(hOldCursor);
 }
 
-TCHAR CMainDlg::GetCurrentDevice() const
+bool CMainDlg::IsSameDrive(TCHAR nVolume)
 {
 	int nIndex = m_wndDevice.GetCurSel();
 	if (nIndex >= 0)
 	{
-		TCHAR szDevice[8];
-		m_wndDevice.GetLBText(nIndex, szDevice);
-		return szDevice[1];
+		DWORD dwDrive = m_wndDevice.GetItemData(nIndex);
+		uint8_t nDeviceType = LOWORD(dwDrive);
+		if (nDeviceType == DEVICE_DRIVE)
+		{
+			return nVolume== HIWORD(dwDrive);
+		}
+		else if (nDeviceType == DEVICE_DISK)
+		{
+			CDiskInfo* pDiskInfo = FindDiskInfo(HIWORD(dwDrive));
+			return find(pDiskInfo->m_Volumes.begin(), pDiskInfo->m_Volumes.end(), nVolume) != pDiskInfo->m_Volumes.end();
+		}
 	}
-	return 0;
+	return false;
 }
 
 CString CMainDlg::GetFullFilePath() const
@@ -1322,3 +1430,171 @@ void CMainDlg::SetButtonBitmap(UINT nButtonID, UINT nImageID)
 	wndButton.SetBitmap(m_BrowseBitmap);
 }
 
+LRESULT CMainDlg::OnDeleteItem(UINT ControlID, LPDELETEITEMSTRUCT lpDeleteItem)
+{
+	if (lpDeleteItem->hwndItem == m_wndDevice)
+	{
+		LPTSTR lpszPath = (LPTSTR)lpDeleteItem->itemData;
+		delete[] lpszPath;
+	}
+	return TRUE;
+}
+
+std::vector<CVolume> CMainDlg::OpenCurrentVolumes()
+{
+	std::vector<CVolume> volumes;
+	int nIndex = m_wndDevice.GetCurSel();
+	DWORD dwDevice = m_wndDevice.GetItemData(nIndex);
+	if (LOWORD(dwDevice) == DEVICE_DRIVE)
+	{
+		TCHAR nVolume = HIWORD(dwDevice);
+		CVolume volume;
+		if (volume.Open(m_hWnd, nVolume, GENERIC_READ))
+		{
+			volumes.push_back(std::move(volume));
+		}
+	}
+	else if (LOWORD(dwDevice) == DEVICE_DISK)
+	{
+		CDiskInfo* pDiskInfo = FindDiskInfo(HIWORD(dwDevice));
+		if (pDiskInfo)
+		{
+			for (size_t i = 0; i != pDiskInfo->m_Volumes.size(); i++)
+			{
+				CVolume volume;
+				if (volume.Open(m_hWnd, pDiskInfo->m_Volumes[i], GENERIC_READ))
+				{
+					volumes.push_back(std::move(volume));
+				}
+			}
+		}
+	}
+	return volumes;
+}
+
+CAtlFile CMainDlg::OpenDevice(DWORD dwDevice, DWORD dwAccess)
+{
+	return GetHandleOnDevice(m_hWnd, dwDevice, dwAccess);
+}
+
+bool CMainDlg::UnmountVolumes(std::vector<CVolume>& volumes)
+{
+	for (CVolume& volume : volumes)
+	{
+		if (!volume.Lock())
+		{
+			m_Status = STATUS_IDLE;
+			UIEnable(IDCANCEL, FALSE);
+			SetReadWriteButtonState();
+			return false;
+		}
+		if (!volume.Unmount())
+		{
+			volume.Unlock();
+			m_Status = STATUS_IDLE;
+			UIEnable(IDCANCEL, FALSE);
+			SetReadWriteButtonState();
+			return false;
+		}
+	}
+	return true;
+}
+
+LRESULT CMainDlg::OnImageFileKillFocus(WORD wNotifyCode, WORD wID, HWND hWndCtl)
+{
+	DoDataExchange(TRUE, IDC_IMAGEFILE);
+	SetReadWriteButtonState();
+	UpdateHashControls();
+
+	CAtlFile file;
+	SetDlgItemText(IDC_FILESIZE, NULL);
+	if (SUCCEEDED(file.Create(m_strImageFile, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, OPEN_EXISTING)))
+	{
+		GetImageFileSize(file);
+	}
+
+	return 0;
+}
+
+template<typename T>
+static CString FormatCapicity(const T& value)
+{
+	CString strText;;
+	if (value.QuadPart >= 1024 * 1024 * 1024)
+	{
+		strText.Format(_T("%.2f GB"), (double)value.QuadPart / (1024 * 1024 * 1024));
+	}
+	else if (value.QuadPart >= 1024 * 1024)
+	{
+		strText.Format(_T("%.2f MB"), (double)value.QuadPart / (1024 * 1024));
+	}
+	else if (value.QuadPart >= 1024)
+	{
+		strText.Format(_T("%.2f KB"), (double)value.QuadPart / 1024);
+	}
+	else
+	{
+		strText.Format(_T("%d B"), value.LowPart);
+	}
+	return strText;
+}
+
+void CMainDlg::GetImageFileSize(HANDLE hFile)
+{
+	LARGE_INTEGER llSize;
+	if (GetFileSizeEx(hFile, &llSize))
+	{
+		CString strText = FormatCapicity(llSize);
+		SetDlgItemText(IDC_FILESIZE, strText);
+	}
+}
+
+void CMainDlg::GetDeviceSize()
+{
+	int nIndex = m_wndDevice.GetCurSel();
+	SetDlgItemText(IDC_DRIVESIZE, NULL);
+	if (nIndex >= 0)
+	{
+		DWORD dwDevice = m_wndDevice.GetItemData(nIndex);
+		CAtlFile device = GetHandleOnDevice(m_hWnd, dwDevice, GENERIC_READ);
+		if (device != INVALID_HANDLE_VALUE)
+		{
+			ULARGE_INTEGER llSize = ::GetDeviceSize(m_hWnd, dwDevice, device);
+			if (llSize.QuadPart > 0)
+			{
+				CString strText = FormatCapicity(llSize);
+				SetDlgItemText(IDC_DRIVESIZE, strText);
+			}
+		}
+	}
+}
+
+LRESULT CMainDlg::OnDeviceSelChange(WORD wNotifyCode, WORD wID, HWND hWndCtl)
+{
+	GetDeviceSize();
+	return 0;
+}
+
+void CMainDlg::AddDrive(TCHAR nDrive)
+{
+	TCHAR szLabel[]=_T("[%c:\\]");
+	szLabel[1]=nDrive;
+	if (m_wndDevice.FindStringExact(-1, szLabel) == -1)
+	{
+		ULONG nDiskNumber;
+		TCHAR szPath[] = _T("\\\\.\\A:\\");
+		szPath[4] = nDrive;
+		// checkDriveType gets the physicalID
+		if (CheckDriveType(m_hWnd, szPath, &nDiskNumber))
+		{
+			CDiskInfo* pDiskInfo = FindDiskInfo(nDiskNumber);
+			if(pDiskInfo)
+			{
+				pDiskInfo->m_Volumes.push_back(nDrive);
+				std::sort(pDiskInfo->m_Volumes.begin(), pDiskInfo->m_Volumes.end());
+				InitDeviceList();
+			}
+			SetReadWriteButtonState();
+		}
+	}
+}
