@@ -5,9 +5,8 @@
 
 #include "resource.h"
 
-#include "aboutdlg.h"
 #include "MainDlg.h"
-#include <atlimage.h>
+#include <gdiplus.h>
 
 CAppModule _Module;
 
