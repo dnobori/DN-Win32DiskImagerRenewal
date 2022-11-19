@@ -1,4 +1,4 @@
-# Win32 Disk Imager Renewal - by dnobori 2022.11.19
+# Win32 Disk Imager Renewal (Google Drive 相性問題解決、単一バイナリ、デジタル署名版) - by dnobori 2022.11.19
 
 このリポジトリは、Windows 上での USB メモリ / SD カードイメージ書き込みツールのデファクト・スタンダードとなっている Win32 Disk Imager について、以下の点を改良した **「Win32 Disk Imager Renewal」** の [**デジタル署名済みの EXE 単体で動作する Win32 / x64 / ARM64 版バイナリ**](https://github.com/dnobori/DN-Win32DiskImagerRenewal/releases/) とソースコードを配布するためのものである。  
 
