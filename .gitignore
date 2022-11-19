@@ -333,3 +333,6 @@ ASALocalRun/
 
 
 # End of https://www.gitignore.io/api/visualstudio
+/DiskImager/Debug_x64
+/DiskImager/Release_x64
+Release_x86
