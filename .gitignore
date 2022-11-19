@@ -336,3 +336,6 @@ ASALocalRun/
 /DiskImager/Debug_x64
 /DiskImager/Release_x64
 Release_x86
+/DiskImager/Debug_ARM64
+/DiskImager/Debug_x86
+/DiskImager/Release_ARM64

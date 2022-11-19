@@ -90,18 +90,18 @@ IDR_MAINFRAME           ICON                    "res\\Win32DiskImager.ico"
 IDD_ABOUTBOX DIALOGEX 0, 0, 187, 102
 STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "About"
-FONT 9, "Meiryo UI", 400, 0, 0x80
+FONT 9, "Tahoma", 400, 0, 0x0
 BEGIN
     DEFPUSHBUTTON   "OK",IDOK,130,81,50,14
     CTEXT           "Win32DiskImager Application v1.0\n\n(c) Copyright 2019",IDC_STATIC,25,57,78,32
-    ICON            IDR_MAINFRAME,IDC_STATIC,55,26,18,17
+    ICON            IDR_MAINFRAME,IDC_STATIC,55,26,18,18
     GROUPBOX        "",IDC_STATIC,7,7,115,88
 END
 
-IDD_MAINDLG DIALOGEX 0, 0, 295, 246
+IDD_MAINDLG DIALOGEX 0, 0, 295, 258
 STYLE DS_SETFONT | WS_MINIMIZEBOX | WS_CAPTION | WS_SYSMENU
 CAPTION "Win32 Disk Imager Renewal - by dnobori 2022.11"
-FONT 9, "Meiryo UI", 400, 0, 0x80
+FONT 9, "Segoe UI", 400, 0, 0x0
 BEGIN
     GROUPBOX        "Image File",IDC_STATIC,7,7,281,34
     EDITTEXT        IDC_IMAGEFILE,14,20,161,12,ES_AUTOHSCROLL
@@ -123,9 +123,9 @@ BEGIN
     PUSHBUTTON      "&Write",IDC_WRITE,119,192,50,14
     PUSHBUTTON      "&Verify Only",IDC_VERIFY_ONLY,173,192,50,14
     DEFPUSHBUTTON   "E&xit",IDCANCEL,236,192,50,14
-    CONTROL         IDB_BITMAP1,IDC_STATIC,"Static",SS_BITMAP,229,207,62,37
-    LTEXT           "Win32 Disk Imager Renewal",IDC_STATIC,7,216,160,8
-    LTEXT           "Now working without problems in combination with Google Drive.",IDC_STATIC,7,231,227,8
+    CONTROL         IDB_BITMAP1,IDC_STATIC,"Static",SS_BITMAP,226,208,62,37
+    LTEXT           "Win32 Disk Imager Renewal",IDC_STATIC,9,216,160,8
+    LTEXT           "Now working without problems in combination with Google Drive.",IDC_STATIC,8,233,213,8
 END
 
 
@@ -150,7 +150,7 @@ BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 288
         TOPMARGIN, 7
-        BOTTOMMARGIN, 239
+        BOTTOMMARGIN, 251
     END
 END
 #endif    // APSTUDIO_INVOKED
