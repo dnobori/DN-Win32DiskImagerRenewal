@@ -12,16 +12,16 @@
 - (3) 登の責任でデジタル署名を行ない、Windows UAC の黄色い警告画面が表示されないようにして、企業環境でも利用しやすいようにした。  
 - (4) 原版は x86 (32bit) 版のみであったが、x64 (64bit) および ARM64 (64bit) 版もビルドした。最新の Windows 11 ARM64 版でも、ネイティブで動作する。  
 
-[Win32 Disk Imager](https://sourceforge.net/projects/win32diskimager/) は、ディスクイメージファイルを USB メモリや SD カードに書き込む際に利用できる、優れた Windows 用ツールである。Win32 Disk Imager は、Tobin Davis 氏によって 2009 年に開発された。
-
-Win32 Disk Imager は、システム管理者や Raspberry Pi 等を活用する組み込み技術者おなどの、コンピュータに詳しい知識を有するユーザーの間で、Windows 上のイメージ書き込みアプリケーションとして、デファクト・スタンダード的なツールとなっている。
-
 
 ![](doc_img/ss.jpg) 
 
 
 ![](doc_img/ss2.jpg) 
 
+
+[Win32 Disk Imager](https://sourceforge.net/projects/win32diskimager/) は、ディスクイメージファイルを USB メモリや SD カードに書き込む際に利用できる、優れた Windows 用ツールである。Win32 Disk Imager は、Tobin Davis 氏によって 2009 年に開発された。
+
+Win32 Disk Imager は、システム管理者や Raspberry Pi 等を活用する組み込み技術者おなどの、コンピュータに詳しい知識を有するユーザーの間で、Windows 上のイメージ書き込みアプリケーションとして、デファクト・スタンダード的なツールとなっている。
 
 ## 2. 原版の Win32 Disk Imager の問題点
 原版の Win32 Disk Imager には、以下の問題点があった。
