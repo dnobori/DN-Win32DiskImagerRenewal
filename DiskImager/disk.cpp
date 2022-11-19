@@ -324,9 +324,16 @@ BOOL GetDisksProperty(HWND hWnd, HANDLE hDevice, PSTORAGE_DEVICE_DESCRIPTOR pDev
         if (DeviceIoControl(hDevice, IOCTL_STORAGE_CHECK_VERIFY2, NULL, 0, NULL, 0, &cbBytesReturned,
                             (LPOVERLAPPED) NULL))
         {
-			ShowErrorMessage(hWnd, _T("An error occurred while querying the properties.\n")
-				_T("This usually means something is currently accessing the device;")
-				_T(" please close all applications and try again."));
+			if (GetLastError() == 122)
+			{
+				// Problem with Google Drive virtual disk. Ignore it.
+			}
+			else
+			{
+				ShowErrorMessage(hWnd, _T("An error occurred while querying the properties.\n")
+					_T("This usually means something is currently accessing the device;")
+					_T(" please close all applications and try again."));
+			}
         }
             retVal = false;
     }

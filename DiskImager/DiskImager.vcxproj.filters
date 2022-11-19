@@ -50,4 +50,18 @@
       <Filter>res</Filter>
     </ResourceCompile>
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="res\browse.png">
+      <Filter>res</Filter>
+    </Image>
+    <Image Include="res\reload.png">
+      <Filter>res</Filter>
+    </Image>
+    <Image Include="res\Win32DiskImager.ico">
+      <Filter>res</Filter>
+    </Image>
+    <Image Include="res\ahill.bmp">
+      <Filter>res</Filter>
+    </Image>
+  </ItemGroup>
 </Project>

@@ -1,6 +1,6 @@
 //{{NO_DEPENDENCIES}}
-// Microsoft Developer Studio generated include file.
-// Used by DiskImager.rc
+// Microsoft Visual C++ で生成されたインクルード ファイル。
+// DiskImager.rc で使用
 //
 #define IDD_ABOUTBOX                    100
 #define IDR_MAINFRAME                   128
@@ -8,6 +8,7 @@
 #define IDB_BROWSE                      202
 #define IDB_PNG2                        203
 #define IDB_RELOAD                      203
+#define IDB_BITMAP1                     205
 #define IDC_PARTITION                   1000
 #define IDC_READ                        1001
 #define IDC_WRITE                       1002
@@ -31,7 +32,7 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        204
+#define _APS_NEXT_RESOURCE_VALUE        206
 #define _APS_NEXT_COMMAND_VALUE         32775
 #define _APS_NEXT_CONTROL_VALUE         1018
 #define _APS_NEXT_SYMED_VALUE           101

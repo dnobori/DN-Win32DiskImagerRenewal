@@ -1,4 +1,4 @@
-//Microsoft Developer Studio generated resource script.
+// Microsoft Visual C++ generated resource script.
 //
 #include "resource.h"
 
@@ -13,21 +13,39 @@
 #undef APSTUDIO_READONLY_SYMBOLS
 
 /////////////////////////////////////////////////////////////////////////////
-// English (U.S.) resources
+// ì˙ñ{åÍ (ì˙ñ{) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_JPN)
+LANGUAGE LANG_JAPANESE, SUBLANG_DEFAULT
+#pragma code_page(932)
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Bitmap
+//
+
+IDB_BITMAP1             BITMAP                  "res\\ahill.bmp"
+
+#endif    // ì˙ñ{åÍ (ì˙ñ{) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+/////////////////////////////////////////////////////////////////////////////
+// âpåÍ (ïƒçë) resources
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
-#ifdef _WIN32
 LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 #pragma code_page(1252)
-#endif //_WIN32
 
 /////////////////////////////////////////////////////////////////////////////
 //
 // PNG
 //
 
-IDB_BROWSE              PNG     MOVEABLE PURE   "res\\browse.png"
-IDB_RELOAD              PNG     MOVEABLE PURE   "res\\reload.png"
+IDB_BROWSE              PNG                     "res\\browse.png"
+
+IDB_RELOAD              PNG                     "res\\reload.png"
+
 
 #ifdef APSTUDIO_INVOKED
 /////////////////////////////////////////////////////////////////////////////
@@ -35,18 +53,18 @@ IDB_RELOAD              PNG     MOVEABLE PURE   "res\\reload.png"
 // TEXTINCLUDE
 //
 
-1 TEXTINCLUDE MOVEABLE PURE 
+1 TEXTINCLUDE 
 BEGIN
     "resource.h\0"
 END
 
-2 TEXTINCLUDE MOVEABLE PURE 
+2 TEXTINCLUDE 
 BEGIN
     "#include ""atlres.h""\r\n"
     "\0"
 END
 
-3 TEXTINCLUDE MOVEABLE PURE 
+3 TEXTINCLUDE 
 BEGIN
     "\0"
 END
@@ -61,54 +79,53 @@ END
 
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
-IDR_MAINFRAME           ICON    DISCARDABLE     "res\\Win32DiskImager.ico"
+IDR_MAINFRAME           ICON                    "res\\Win32DiskImager.ico"
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
 // Dialog
 //
 
-IDD_ABOUTBOX DIALOG DISCARDABLE  0, 0, 187, 102
-STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+IDD_ABOUTBOX DIALOGEX 0, 0, 187, 102
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "About"
-FONT 8, "MS Shell Dlg"
+FONT 9, "Meiryo UI", 400, 0, 0x80
 BEGIN
     DEFPUSHBUTTON   "OK",IDOK,130,81,50,14
-    CTEXT           "Win32DiskImager Application v1.0\n\n(c) Copyright 2019",
-                    IDC_STATIC,25,57,78,32
-    ICON            IDR_MAINFRAME,IDC_STATIC,55,26,18,20
+    CTEXT           "Win32DiskImager Application v1.0\n\n(c) Copyright 2019",IDC_STATIC,25,57,78,32
+    ICON            IDR_MAINFRAME,IDC_STATIC,55,26,18,17
     GROUPBOX        "",IDC_STATIC,7,7,115,88
 END
 
-IDD_MAINDLG DIALOG DISCARDABLE  0, 0, 295, 224
-STYLE DS_FIXEDSYS | WS_MINIMIZEBOX | WS_CAPTION | WS_SYSMENU
-CAPTION "Win32 Disk Imager"
-FONT 8, "MS Shell Dlg"
+IDD_MAINDLG DIALOGEX 0, 0, 295, 246
+STYLE DS_SETFONT | WS_MINIMIZEBOX | WS_CAPTION | WS_SYSMENU
+CAPTION "Win32 Disk Imager Renewal - by dnobori 2022.11"
+FONT 9, "Meiryo UI", 400, 0, 0x80
 BEGIN
     GROUPBOX        "Image File",IDC_STATIC,7,7,281,34
     EDITTEXT        IDC_IMAGEFILE,14,20,161,12,ES_AUTOHSCROLL
     PUSHBUTTON      "Browse",IDC_BROWSE,179,19,16,14,BS_BITMAP
     LTEXT           "",IDC_FILESIZE,215,22,67,8
     GROUPBOX        "Device",IDC_STATIC,7,46,281,35
-    CONTROL         "",IDC_DEVICE,"ComboBoxEx32",CBS_DROPDOWNLIST | CBS_SORT | 
-                    WS_VSCROLL | WS_TABSTOP,15,59,174,65
+    CONTROL         "",IDC_DEVICE,"ComboBoxEx32",CBS_DROPDOWNLIST | CBS_SORT | WS_VSCROLL | WS_TABSTOP,15,59,174,65
     LTEXT           "",IDC_DRIVESIZE,215,61,67,8
     GROUPBOX        "Hash",IDC_STATIC,7,93,281,48
-    COMBOBOX        IDC_HASH_TYPE,17,107,48,30,CBS_DROPDOWNLIST | WS_VSCROLL | 
-                    WS_TABSTOP
+    COMBOBOX        IDC_HASH_TYPE,17,107,48,30,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
     PUSHBUTTON      "&Generate",IDC_HASH_GENERATE,69,105,50,14
     PUSHBUTTON      "&Copy",IDC_HASH_COPY,125,105,50,14
     LTEXT           "",IDC_HASH_LABEL,14,127,261,8
-    CONTROL         "Read Only Allocated Partitions",IDC_PARTITION,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,7,149,114,10
+    CONTROL         "Read Only Allocated Partitions",IDC_PARTITION,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,149,114,10
     GROUPBOX        "Progress",IDC_STATIC,7,160,282,27
-    CONTROL         "",IDC_PROGRESS,"msctls_progress32",WS_BORDER,14,170,271,
-                    14
+    CONTROL         "",IDC_PROGRESS,"msctls_progress32",WS_BORDER,14,170,271,14
     PUSHBUTTON      "Cancel",IDC_ABORT,8,192,50,14
     PUSHBUTTON      "&Read",IDC_READ,65,192,50,14
     PUSHBUTTON      "&Write",IDC_WRITE,119,192,50,14
     PUSHBUTTON      "&Verify Only",IDC_VERIFY_ONLY,173,192,50,14
     DEFPUSHBUTTON   "E&xit",IDCANCEL,236,192,50,14
+    CONTROL         IDB_BITMAP1,IDC_STATIC,"Static",SS_BITMAP,229,207,62,37
+    LTEXT           "Win32 Disk Imager Renewal",IDC_STATIC,7,216,160,8
+    LTEXT           "Now working without problems in combination with Google Drive.",IDC_STATIC,7,231,227,8
 END
 
 
@@ -118,7 +135,7 @@ END
 //
 
 #ifdef APSTUDIO_INVOKED
-GUIDELINES DESIGNINFO MOVEABLE PURE 
+GUIDELINES DESIGNINFO
 BEGIN
     IDD_ABOUTBOX, DIALOG
     BEGIN
@@ -133,7 +150,7 @@ BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 288
         TOPMARGIN, 7
-        BOTTOMMARGIN, 217
+        BOTTOMMARGIN, 239
     END
 END
 #endif    // APSTUDIO_INVOKED
@@ -144,7 +161,7 @@ END
 // Accelerator
 //
 
-IDR_MAINFRAME ACCELERATORS MOVEABLE PURE 
+IDR_MAINFRAME ACCELERATORS
 BEGIN
     "N",            ID_FILE_NEW,            VIRTKEY, CONTROL
     "O",            ID_FILE_OPEN,           VIRTKEY, CONTROL
@@ -163,7 +180,6 @@ BEGIN
 END
 
 
-#ifndef _MAC
 /////////////////////////////////////////////////////////////////////////////
 //
 // Version
@@ -186,18 +202,14 @@ BEGIN
     BEGIN
         BLOCK "040904b0"
         BEGIN
-            VALUE "Comments", "Image Writer for Windows to write USB and SD images\0"
-            VALUE "CompanyName", "\0"
-            VALUE "FileDescription", "DiskImager\0"
-            VALUE "FileVersion", "1.1.0\0"
-            VALUE "InternalName", "win32-image-writer\0"
-            VALUE "LegalCopyright", "Copyright (C) 2009-2017 Windows ImageWriter Team\0"
-            VALUE "LegalTrademarks", "\0"
-            VALUE "OriginalFilename", "Win32DiskImager\0"
-            VALUE "PrivateBuild", "\0"
-            VALUE "ProductName", "Win32 Image Writer\0"
-            VALUE "ProductVersion", "1.1.0\0"
-            VALUE "SpecialBuild", "\0"
+            VALUE "Comments", "Image Writer for Windows to write USB and SD images"
+            VALUE "FileDescription", "Win32 DiskImager Renewal"
+            VALUE "FileVersion", "1.1.0"
+            VALUE "InternalName", "win32-image-writer"
+            VALUE "LegalCopyright", "Copyright (C) 2009-2017 Windows ImageWriter Team"
+            VALUE "OriginalFilename", "Win32DiskImagerRenewal"
+            VALUE "ProductName", "Win32 DiskImager Renewal"
+            VALUE "ProductVersion", "1.1.0"
         END
     END
     BLOCK "VarFileInfo"
@@ -206,17 +218,20 @@ BEGIN
     END
 END
 
-#endif    // !_MAC
-
 
 /////////////////////////////////////////////////////////////////////////////
 //
 // AFX_DIALOG_LAYOUT
 //
 
-IDD_MAINDLG AFX_DIALOG_LAYOUT MOVEABLE PURE 
+IDD_MAINDLG AFX_DIALOG_LAYOUT
 BEGIN
-    0x0000
+    0
+END
+
+IDD_ABOUTBOX AFX_DIALOG_LAYOUT
+BEGIN
+    0
 END
 
 
@@ -225,12 +240,12 @@ END
 // String Table
 //
 
-STRINGTABLE DISCARDABLE 
+STRINGTABLE
 BEGIN
     IDR_MAINFRAME           "Win32 Disk Imager"
 END
 
-STRINGTABLE DISCARDABLE 
+STRINGTABLE
 BEGIN
     ATL_IDS_IDLEMESSAGE     "Ready"
     IDS_IMAGE_LARGER_THEN_DISK 
@@ -238,7 +253,7 @@ BEGIN
     ID_ELAPSED_TIME         "00:00:00/00:00:00"
 END
 
-#endif    // English (U.S.) resources
+#endif    // âpåÍ (ïƒçë) resources
 /////////////////////////////////////////////////////////////////////////////
 
 
