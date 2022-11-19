@@ -1,14 +1,26 @@
 # Win32 Disk Imager Renewal - by dnobori 2022.11
 
+このリポジトリは、Windows 上での USB メモリ / SD カードイメージ書き込みツールのデファクト・スタンダードとなっている Win32 Disk Imager について、以下の点を改良した **「Win32 Disk Imager Renewal」** の [**デジタル署名済みの EXE 単体で動作する Win32 / x64 / ARM64 版バイナリ**](https://github.com/dnobori/DN-Win32DiskImagerRenewal/releases/) とソースコードを配布するためのものである。  
 
-## 1. Win32 Disk Imager とは
+
+- (1) PC 上で Google Drive が起動していても、Win32 Disk Imager が起動できるようにした。原版では、相性問題で、エラーが発生していた。  
+- (2) 原版は 10Mbytes 程度のサイズがあり、1 つの EXE と 18 個の DLL が必要であったが、このバイナリは、200Kbytes 程度の 1 つの EXE にまとまっている。Win32 Disk Imager を使用したことがない人に EXE を配布する際の作業が、極めて簡単になった。  
+- (3) 登の責任でデジタル署名を行ない、Windows UAC の黄色い警告画面が表示されないようにして、企業環境でも利用しやすいようにした。  
+- (4) 原版は x86 (32bit) 版のみであったが、x64 (64bit) および ARM64 (64bit) 版もビルドした。最新の Windows 11 ARM64 版でも、ネイティブで動作する。  
+
 [Win32 Disk Imager](https://sourceforge.net/projects/win32diskimager/) は、ディスクイメージファイルを USB メモリや SD カードに書き込む際に利用できる、優れた Windows 用ツールである。Win32 Disk Imager は、Tobin Davis 氏によって 2009 年に開発された。
 
 Win32 Disk Imager は、システム管理者や Raspberry Pi 等を活用する組み込み技術者おなどの、コンピュータに詳しい知識を有するユーザーの間で、Windows 上のイメージ書き込みアプリケーションとして、デファクト・スタンダード的なツールとなっている。
 
 
-## 2. Win32 Disk Imager の問題点
-しかしながら、Win32 Disk Imager には、以下の問題点がある。
+![](doc_img/ss.jpg) 
+
+
+![](doc_img/ss2.jpg) 
+
+
+## 2. 原版の Win32 Disk Imager の問題点
+原版の Win32 Disk Imager には、以下の問題点があった。
 
 1. **Google Drive との相性問題。**  
     - Google Drive クライアントアプリケーションを稼働させている Windows 環境では、Win32 Disk Imager の起動時に、エラーが発生し、正常に利用できない。
@@ -23,8 +35,9 @@ Win32 Disk Imager は、システム管理者や Raspberry Pi 等を活用する
     - この際に、素人システム管理者はこれまで Win32 Disk Imager を利用したことなどないのであるから、玄人システム管理者は、素人システム管理者に対して、URL を Slack 等で提示し、そこからダウンロードしてインストールするよう指示する必要がある。この際に、大きなファイルのダウンロードやインストールまたは ZIP の展開といった追加作業が必要になってしまう。
     - そこで、Win32 Disk Imager を単一の EXE ファイル (その EXE ファイルのみをダウンロードして実行すれば直ちに起動することができ、実行において追加の DLL ファイルが一切必要のないもの) で動作することを可能にするポータブル EXE ファイルが、是非とも必要である。
 
-3. **デジタル署名されておらず、Windows UAC の実行時に黄色い警告画面が表示される。**
+3. **オリジナル配布元の EXE は、デジタル署名されておらず、起動時に Windows UAC の黄色いいやな警告画面が表示される。**
     - Win32 Disk Imager は幅広く利用されているにもかかわらず、その EXE ファイルはデジタル署名されていない。そして、Win32 Disk Imager は、実行時にシステム権限への昇格が必要であるが、デジタル署名されていないので、実行時に Windows UAC (User Account Control) の黄色い警告画面が表示される。
+![](doc_img/uac_error.jpg) 
     - そのため、2 のように、玄人システム管理者が素人システム管理者に対して Win32 Disk Imager の実行を指示すると、Windows UAC の黄色い警告画面が素人システム管理者の Windows デスクトップに表示されることになり、素人システム管理者は、ろうばいすることになる。
         - なぜならば、昨今の素人システム管理者は、買ってきた保証付きの製品を使用することだけで満足している状況であり、自らのリスクでオープンソースソフトウェアをダウンロードして業務に利用したり、必要に応じて自らソースコードを改造してコンパイルし、管理ツールを作成したりするというような、システム管理者にとって当然必要な作業を、生まれてから一度も行なったことがないというような状況にある場合もあるためである。誠に残念なことに、最近の企業におけるシステム管理者たちにおいては、このように、圧倒的に必要な経験知識が不足しているのである。
         - すなわち、彼らは管理対象のシステム群の表面的利用方法 (ユーザーとほとんど同一の視点における利用方法) のみを一応習得しているに過ぎず、対象システムがどのように動いているのか、対象システムにおいて不具合が発生した場合に自力でこれらの問題を解決するためにはどのような手法が存在するか、というような、凡そシステム管理者として必須の能力を、全く有していないのである。これでは、システム管理者は表面的な作業をのぞき、本質的なシステム管理を行なうことが全く不可能である。彼らは、システムの中身について必要な知識経験を習得することもできない。
@@ -62,24 +75,27 @@ Win32 Disk Imager は、システム管理者や Raspberry Pi 等を活用する
 4. **x86 版、x64 版、ARM64 版の 3 つのバイナリをビルドした。**
     - これで、企業で導入され始めている省電力 ARM64 ラップトップ上の Windows 10 / 11 でも、ネイティブに動作する。
 
-1. は、単に Google Drive との相性により生じるエラーを無視し、エラーメッセージも表示しないようにした。
+1 は、単に Google Drive との相性により生じるエラーを無視し、エラーメッセージも表示しないようにした。
 
-2. は、GitHub 上の [znone 氏](https://github.com/znone/) による [Win32DiskImager の fork](https://github.com/znone/Win32DiskImager) の成果である。znone 氏は、Qt に依存していた元の Win32 Disk Imager を改良し、Win32 API のみに依存するように再構築した。また、znone 氏は、いくつかの小規模な素晴らしい改良を施した。詳しくは、[Win32DiskImager の fork の README](https://github.com/znone/Win32DiskImager/blob/d540ff308ecf7ebf545ce8d5c585ad67c1badee0/README.md) を参照すること。
+2 は、GitHub 上の [znone 氏](https://github.com/znone/) による [Win32DiskImager の fork](https://github.com/znone/Win32DiskImager) の成果である。znone 氏は、Qt に依存していた元の Win32 Disk Imager を改良し、Win32 API のみに依存するように再構築した。また、znone 氏は、いくつかの小規模な素晴らしい改良を施した。詳しくは、[Win32DiskImager の fork の README](https://github.com/znone/Win32DiskImager/blob/d540ff308ecf7ebf545ce8d5c585ad67c1badee0/README.md) を参照すること。
 
-3. は、単に登が自分のデジタル証明書でデジタル署名しただけである。
+3 は、単に登が自分のデジタル証明書でデジタル署名しただけである。
 
-4. は、Visual Studio 2022 で x86 版、x64 版、ARM64 版のバイナリをビルドしただけである。
-
-まとめてみれば、単に上記のことだけであり、さらに、登が実施したのは、わずかである。
-
-したがって、わざわざこのような長大な README ファイルの執筆などは不要なのであるが、それだと貢献が少なすぎて Win32 Disk Imager の原作者の Tobin Davis 氏、改良者の znone 氏に申し訳が立たないので、上記のような分量の多いドキュメントを書いたのである。しかし、上記のドキュメントの大半は、Win32 Disk Imager の本質に全く関係がない点に、十分な注意を要するのである。
+![](doc_img/uac_ok.jpg) 
 
 
-# 4. ダウンロード方法
-👉 登がビルドした EXE ファイルは、[**https://github.com/IPA-CyberLab/IPA-DN-Fork-Win32DiskImager/releases/**](https://github.com/IPA-CyberLab/IPA-DN-Fork-Win32DiskImager/releases/) にアップロードしてある。
+4 は、Visual Studio 2022 で x86 版、x64 版、ARM64 版のバイナリをビルドしただけである。
+
+まとめてみれば、単に上記のことだけであり、登が実施した作業は、わずかである。
+
+したがって、わざわざこのような長大な README ファイルの執筆などは全く不要なのであるが、それだと貢献が少なすぎて Win32 Disk Imager の原作者の Tobin Davis 氏、改良者の znone 氏に申し訳が立たないので、上記のような分量の多いドキュメントを書いたのである。しかし、上記のドキュメントの大半は、Win32 Disk Imager の本質に全く関係がない点に、十分な注意を要するのである。
 
 
-# 5. 改造・ビルド方法
+## 4. ダウンロード方法
+👉 登がビルドした EXE ファイルは、[**https://github.com/dnobori/DN-Win32DiskImagerRenewal/releases/**](https://github.com/dnobori/DN-Win32DiskImagerRenewal/releases/) にアップロードしておる。
+
+
+## 5. 改造・ビルド方法
 Visual Studio 2022 (無償の Community Edition でも OK) が必要である。
 
 Visual C++ のデスクトップアプリ用コンポーネントをインストールする必要がある。また、追加のコンポーネントとして、以下のインストールが必要である (いずれも Visual Studio の標準インストーラからインストールことができるようになっている)。
@@ -95,20 +111,26 @@ SDK、ライブラリ、およびフレームワーク
 ```
 
 
-#6. 著作権、ライセンスおよび免責事項
-[もともとのソースコードのリポジトリに入っていたライセンスファイル](https://github.com/IPA-CyberLab/IPA-DN-Fork-Win32DiskImager/blob/master/LICENSE) を、そのまま本リポジトリにも入れてある。GPLv2 ライセンスである。
+## 6. 著作権、ライセンスおよび免責事項
+[もともとのソースコードのリポジトリに入っていたライセンスファイル](https://github.com/dnobori/DN-Win32DiskImagerRenewal/blob/master/LICENSE) を、そのまま本リポジトリにも入れてある。GPLv2 ライセンスである。
 
 
-リポジトリには、ビルドに必要な [Windows Template Library (WTL)](https://sourceforge.net/projects/wtl/) も一緒に同梱してある。バージョンは、`WTL10_10320_Release` である。ライセンスは、[Microsoft Public License (MS-PL)](https://github.com/IPA-CyberLab/IPA-DN-Fork-Win32DiskImager/blob/master/WTL10_10320_Release/MS-PL.txt) である。
+リポジトリには、ビルドに必要な [Windows Template Library (WTL)](https://sourceforge.net/projects/wtl/) も一緒に同梱してある。バージョンは、`WTL10_10320_Release` である。ライセンスは、[Microsoft Public License (MS-PL)](https://github.com/dnobori/DN-Win32DiskImagerRenewal/blob/master/WTL10_10320_Release/MS-PL.txt) である。
 
-著作権表記
-```
-Original version developed by Justin Davis <tuxdavis@gmail.com>
-Maintained by the ImageWriter developers (http://sourceforge.net/projects/win32diskimager).
-2019-2020 年頃に https://github.com/znone/ 氏によって改良され https://github.com/znone/Win32DiskImager/ で配布されている。
-登は、上記の著作物を派生して、https://github.com/IPA-CyberLab/IPA-DN-Fork-Win32DiskImager/ を作成した。
-```
+## 7. 無保証について
+本プログラムは代価無しに利用が許可されるので、適切な法が認める限りにおいて、本プログラムに関するいかなる保証も存在しない。書面で別に述べる場合を除いて、著作権者、またはその他の団体は、本プログラムを、表明されたか言外にかは問わず、商業的適性を保証するほのめかしやある特定の目的への適合性(に限られない)を含む一切の保証無しに「あるがまま」で提供する。本プログラムの質と性能に関するリスクのすべてはあなたに帰属する。本プログラムに欠陥があると判明した場合、あなたは必要な保守点検や補修、修正に要するコストのすべてを引き受けることになる。
+
+適切な法か書面での同意によって命ぜられない限り、著作権者、または上記で許可されている通りに本プログラムを改変または再頒布したその他の団体は、あなたに対して本プログラムの利用ないし利用不能で生じた通常損害や特別損害、偶発損害、間接損害(データの消失や不正確な処理、あなたか第三者が被った損失、あるいは本プログラムが他のソフトウェアと一緒に動作しない という不具合などを含むがそれらに限らない)に一切の責任を負わない。そのような損害が生ずる可能性について彼らが忠告されていたとしても同様である。
+
+本ソフトウェアは、消費者契約法が定める消費者としての利用を目的に作られていません。そのような利用はご遠慮ください。
+
+## 8. 著作権表記
+Original version developed by Justin Davis <tuxdavis@gmail.com>  
+Maintained by the ImageWriter developers (http://sourceforge.net/projects/win32diskimager).  
+2019-2020 年頃に https://github.com/znone/ 氏によって改良され https://github.com/znone/Win32DiskImager/ で配布されている。  
+登は、上記の著作物を派生して、https://github.com/dnobori/DN-Win32DiskImagerRenewal/ を作成した。  
 
 
-糸冬了！！
+
+## 糸冬了！！
 
