@@ -3,6 +3,10 @@
 このリポジトリは、Windows 上での USB メモリ / SD カードイメージ書き込みツールのデファクト・スタンダードとなっている Win32 Disk Imager について、以下の点を改良した **「Win32 Disk Imager Renewal」** の [**デジタル署名済みの EXE 単体で動作する Win32 / x64 / ARM64 版バイナリ**](https://github.com/dnobori/DN-Win32DiskImagerRenewal/releases/) とソースコードを配布するためのものである。  
 
 
+[**👉 Win32 / x64 / ARM64 版バイナリ (署名済み、インストーラ不要) のダウンロード**](https://github.com/dnobori/DN-Win32DiskImagerRenewal/releases/)
+
+### 改良点
+
 - (1) PC 上で Google Drive が起動していても、Win32 Disk Imager が起動できるようにした。原版では、相性問題で、エラーが発生していた。  
 - (2) 原版は 10Mbytes 程度のサイズがあり、1 つの EXE と 18 個の DLL が必要であったが、このバイナリは、200Kbytes 程度の 1 つの EXE にまとまっている。Win32 Disk Imager を使用したことがない人に EXE を配布する際の作業が、極めて簡単になった。  
 - (3) 登の責任でデジタル署名を行ない、Windows UAC の黄色い警告画面が表示されないようにして、企業環境でも利用しやすいようにした。  
