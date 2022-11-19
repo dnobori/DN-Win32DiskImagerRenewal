@@ -5,6 +5,8 @@
 
 [**👉 Win32 / x64 / ARM64 版バイナリ (署名済み、インストーラ不要) のダウンロード**](https://github.com/dnobori/DN-Win32DiskImagerRenewal/releases/)
 
+※ 新たなバイナリ公開の最初のうちは、Chrome ブラウザで「まだダウンロードした人が少ない」旨の警告またはエラーが表示される場合があるが、これは、正常な現象である。
+
 ### 改良点
 
 - (1) PC 上で Google Drive が起動していても、Win32 Disk Imager が起動できるようにした。原版では、相性問題で、エラーが発生していた。  
