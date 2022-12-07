@@ -264,6 +264,7 @@ LRESULT CMainDlg::OnReadClicked(WORD wNotifyCode, WORD wID, HWND hWndCtl)
 {
 	CString strFullPath;
 	DoDataExchange(TRUE, IDC_IMAGEFILE);
+	DoDataExchange(TRUE, IDC_PARTITION);	// Update m_bPartition
 	CVolume Volume;
 	CAtlFile File, RawDisk;
 	if (!m_strImageFile.IsEmpty())
