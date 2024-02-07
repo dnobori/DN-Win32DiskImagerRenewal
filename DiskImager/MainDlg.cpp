@@ -186,7 +186,7 @@ LRESULT CMainDlg::OnBrowseClicked(WORD wNotifyCode, WORD wID, HWND hWndCtl)
 
 	// See if there is a user-defined file extension.
 	TCHAR szFileType[1024] = { 0 };
-	const TCHAR szImageFilter[] = _T("Disk Images (*.img)\0*.img\0All Files\0*.*\0");
+	const TCHAR szImageFilter[] = _T("Disk Images (*.img,*.iso)\0*.img;*.iso\0All Files\0*.*\0");
 	DWORD dwSize = GetEnvironmentVariable(_T("DiskImagerFiles"), szFileType, _countof(szFileType));
 	memcpy(szFileType + dwSize, szImageFilter, sizeof(szImageFilter));
 	// create a generic FileDialog
